@@ -1,0 +1,148 @@
+﻿@using System.Drawing
+<svg width="@Width" height="@(MaxY*2)">
+    <g transform="translate(0,@(MinY+MaxY)) scale(1,-1)" @onmousemove="MouseMove">
+        <rect style="stroke:black;fill:transparent;" width="@Width" height="@(MaxY-MinY)" />
+    </g>
+    <g transform="translate(@TranslateX,@(MinY+MaxY)) scale(@XScaleZoom,-1)"> @*Y = 0 is at the top by default. transformation puts it at the bottom*@
+        if (DataPoints != null)
+        {
+            @foreach(var n in Enumerable.Range(0, DataPoints.Count()))
+            {
+                <rect style="fill:@DataPoints.ElementAt(n).Color;" width="@BarWidth" x="@((BarWidth+BarSpace)*n)" y="@DataPoints.ElementAt(n).MinPrice" height="@DataPoints.ElementAt(n).Difference" @onmousemove="BarOver" />
+            }
+        }
+    </g>
+    <g transform="translate(0,@(MinY+MaxY+(MaxY*ZoomControlScale))) scale(@XScale,@(-ZoomControlScale))"> 
+        if (DataPoints != null)
+        {
+            @foreach(var n in Enumerable.Range(0, DataPoints.Count()))
+            {
+                <rect style="fill:@DataPoints.ElementAt(n).Color;" width="@BarWidth" x="@((BarWidth+BarSpace)*n)" y="@DataPoints.ElementAt(n).MinPrice" height="@DataPoints.ElementAt(n).Difference" />
+            }
+        }
+    </g>
+    <g transform="translate(0,@(MinY+MaxY+(MaxY*ZoomControlScale))) scale(1,@(-ZoomControlScale))" @onmousemove="MouseMove">
+        <rect style="stroke: black;fill:transparent;" width="@Width" height="@(MaxY-MinY)" />
+    </g>
+    <g transform="translate(0,@(MinY+MaxY+(MaxY*ZoomControlScale))) scale(1,@(-ZoomControlScale))" @onmousedown="SelectStartMarker"> 
+        <rect style="fill:rgb(0,255,0);" width="6" x="@RangeStart" height="@MaxY" /> 
+    </g>
+    <g transform="translate(0,@(MinY+MaxY+(MaxY*ZoomControlScale))) scale(1,@(-ZoomControlScale))" @onmousedown="SelectEndMarker"> 
+        <rect style="fill:rgb(255,0,0);" transform="translate(-6,0)" width="6" x="@RangeEnd" height="@MaxY" /> @*The Translate here is to keep it visible*@
+    </g>
+</svg>
+
+@code {
+    //Mixing of decimal and float types is because financial you stick with decimal, and for rendering, we use floating point (single or double precision).
+    //And because I'm fucking lazy and don't want to do casting in expressions above, I'm doing it here. 
+    public class PriceRange
+    {
+        public decimal MinPrice { get; set; }
+        public decimal MaxPrice { get; set; }
+        public decimal MidPrice
+        {
+            get => (MaxPrice - MinPrice) / 2;
+        }
+        public float Difference
+        {
+            get => (float)(MaxPrice - MinPrice);
+        }
+
+        public string Color { get; set; }
+    }
+
+    IEnumerable<PriceRange>? _dataPoints = null;
+
+    float ZoomControlScale = 0.25f;
+
+    void BarOver(MouseEventArgs e)
+    {
+        Console.WriteLine("Over");
+    }
+
+    void MouseMove(MouseEventArgs e)
+    {
+        if (e.Buttons == 1)
+        {
+            if (StartMarkerSelected)
+                RangeStart = (int)e.OffsetX;
+            else
+                RangeEnd = (int)e.OffsetX;
+            //Console.WriteLine("{0}:{1}:{2}:{3}:{4}", RangeStart, ComputedWidth, XScale, XScaleZoom, TranslateX);
+        }
+    }
+
+    bool StartMarkerSelected = true;
+
+    void SelectStartMarker(MouseEventArgs e)
+    {
+        StartMarkerSelected = true;
+    }
+
+    void SelectEndMarker(MouseEventArgs e)
+    {
+        StartMarkerSelected = false;
+    }
+
+    float TranslateX { get => -RangeStart * XScaleZoom / XScale; }
+
+    float _rangeEnd = float.MinValue;
+    float _rangeStart = float.MaxValue;
+
+    float RangeStart
+    {
+        get => _rangeStart == float.MaxValue ? 0 : _rangeStart;
+        set
+        {
+            if (value < RangeEnd)
+            {
+                _rangeStart = value;
+            }
+        }
+    }
+    float RangeEnd
+    {
+        get => _rangeEnd == float.MinValue ? Width : _rangeEnd;
+        set
+        {
+            if (value > RangeStart)
+            {
+                _rangeEnd = value;
+            }
+        }
+    }
+
+    [Parameter]
+    public IEnumerable<PriceRange>? DataPoints
+    {
+        get => _dataPoints;
+        set
+        {
+            _dataPoints = value;
+            MinY = (float)_dataPoints!.Min(p => p.MinPrice);
+            MaxY = (float)_dataPoints!.Max(p => p.MaxPrice);
+        }
+    }
+
+    int BarWidth = 10;
+    int BarSpace = 2;
+
+    float MinY { get; set; }
+    float MaxY { get; set; }
+
+    float ComputedWidth { get => DataPoints!.Count() * (BarWidth + BarSpace); }
+
+    float XScale
+    {
+        get => Width / ComputedWidth;
+    }
+
+
+    float XScaleZoom
+    {
+        get => XScale / ((RangeEnd - RangeStart) / Width);
+    }
+
+    [Parameter]
+    public float Width { get; set; }
+    }

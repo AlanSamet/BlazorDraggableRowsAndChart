@@ -1,0 +1,33 @@
+﻿@typeparam TData
+<div>
+    @if (ItemsSource != null)
+    {
+        @foreach(var item in ItemsSource)
+        {
+            <div @onclick="args => ItemClick(item, args)">
+                @ItemTemplate(item)
+            </div>
+        }
+    }
+</div>
+@code {
+    [Parameter]
+    public EventCallback OnOrderChanged { get; set; }
+
+    void ItemClick(TData item, MouseEventArgs e) //or async Task if you're doing any await stuff.
+    {
+        var oldIndex = ItemsSource!.IndexOf(item);
+        if (oldIndex > 0)
+        {
+            ItemsSource.Remove(item);
+            ItemsSource.Insert(oldIndex - 1, item);
+            OnOrderChanged.InvokeAsync();
+        }
+    }
+
+    [Parameter]
+    public List<TData>? ItemsSource { get; set; }
+
+    [Parameter]
+    public RenderFragment<TData>? ItemTemplate { get; set; }
+}

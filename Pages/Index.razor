@@ -1,0 +1,81 @@
+﻿@page "/"
+@using System.Drawing
+@using static BlazorDraggableRows.Shared.Chart
+
+<PageTitle>Index</PageTitle>
+
+<h1>Hello, world!</h1>
+
+Welcome to your new app.
+
+<h1>Chart</h1>
+<Chart DataPoints="@DataPoints" Width="1000" />
+<h1>Clickable</h1>
+<ClickableRows OnOrderChanged=@OrderChanged ItemsSource="@MyItems">
+    <ItemTemplate>
+        <h2 style="background-color:@context.BackColor;">@context.A</h2>
+    </ItemTemplate>
+</ClickableRows>
+
+<h1>Draggable</h1>
+<DraggableRows OnOrderChanged=@OrderChanged ItemsSource="@MyItems" TData="Foo"> @*The TData argument is a workaround for generic type constraints defined in the Draggable file*@
+    <ItemTemplate>
+        <h1 style="background-color:@context.BackColor;">@context.A</h1>
+    </ItemTemplate>
+</DraggableRows>
+@code
+{
+    void OrderChanged()
+    {
+        this.InvokeAsync(() => this.StateHasChanged());
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        MyItems = new List<Foo>();
+        Random r = new Random();
+        foreach(var n in Enumerable.Range(1,10))
+        {
+            MyItems.Add(new Foo()
+            {
+                A = n,
+                BackColor = System.Drawing.ColorTranslator.ToHtml(System.Drawing.Color.FromArgb(r.Next(128, 255), r.Next(128, 255), r.Next(128, 255)))
+            });
+        }
+    }
+    List<Foo>? MyItems { get; set; }
+
+    List<PriceRange>? _dataPoints = null;
+    List<PriceRange> DataPoints 
+    {
+        get
+        {
+            if (_dataPoints == null)
+            {
+                _dataPoints = new List<PriceRange>();
+                Random r = new Random();
+                int v = r.Next(100);
+                int lastV = v;
+                foreach(var n in Enumerable.Range(0, 400))
+                {
+                    _dataPoints.Add(new PriceRange
+                    {
+                        MinPrice = v,
+                        MaxPrice = v + r.Next(3,30),
+                        Color = lastV > v ? "red" : "green"
+                    });
+                    lastV = v;
+                    v += r.Next(30) - 15;
+                    v = v < 0 ? 0 : v;
+                }
+            }
+            return _dataPoints;
+        }
+    }
+    class Foo
+    {
+        public int A { get; set; }
+        public string BackColor { get; set; } = "yellow";
+    }
+}
